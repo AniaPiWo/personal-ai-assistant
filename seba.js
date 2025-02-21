@@ -1,58 +1,34 @@
 import dotenv from "dotenv";
-import { Telegraf } from "telegraf";
-import OpenAI from "openai";
+import { initTelegramBot } from "./services/telegram.js";
+import { initOpenAI } from "./services/openai.js";
 
 dotenv.config();
 
-// init gpt
-if (!process.env.OPENAI_API_KEY) {
-  console.error("❌ Brak klucza API OpenAI! Sprawdź plik .env");
+if (!process.env.OPENAI_API_KEY || !process.env.TELEGRAM_BOT_TOKEN) {
+  console.error("❌ Brak wymaganych kluczy API! Sprawdź plik .env");
   process.exit(1);
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const { getAIResponse } = initOpenAI(process.env.OPENAI_API_KEY);
+const seba = initTelegramBot(process.env.TELEGRAM_BOT_TOKEN);
 
-const completion = await openai.chat.completions.create({
-  model: "gpt-4",
-  messages: [{ role: "user", content: "write a haiku about ai" }],
-});
-console.log(completion.choices[0].message.content);
-
-if (!process.env.TELEGRAM_BOT_TOKEN) {
-  console.error("❌ Brak tokena API! Sprawdź plik .env");
-  process.exit(1);
-}
-
-// init bota
-const seba = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-
-seba.telegram.getMe().then((botInfo) => {
-  console.log("✅ Seba wystartował, siema wariaty!");
-  //console.log(botInfo);
-});
-
-const odpowiedzi = [
-  "Hehe, piwko to życie, wiadomo 🍺",
-  "Byku, jak nie piwko to co? 😎",
-  "Dobra, dobra, ale masz jakieś 2 zł na browara? 🤣",
-  "Ty, a może jakiegoś hot-doga z Orlenu ogarniemy? 🌭",
-  "Szanuję za luźną gadkę, byle nie o robocie! 💪",
-  "Poczekaj, tylko dopiję browarka i odpowiem 😂",
-];
-
-// komendy bota
 seba.start((ctx) => ctx.reply("Siema byku! Co tam? 😎"));
 seba.help((ctx) =>
   ctx.reply("No co, hehe, pytaj śmiało! Może o dobrego browarka? 🍻")
 );
-seba.on("text", (ctx) => {
-  const randomOdp = odpowiedzi[Math.floor(Math.random() * odpowiedzi.length)];
-  ctx.reply(randomOdp);
+
+seba.on("text", async (ctx) => {
+  const userMessage = ctx.message.text;
+  try {
+    const aiResponse = await getAIResponse(userMessage);
+    ctx.reply(aiResponse);
+  } catch (error) {
+    console.error("❌ Błąd podczas generowania odpowiedzi:", error);
+    ctx.reply("Oj, coś poszło nie tak... Spróbuj jeszcze raz! 😅");
+  }
 });
 
-// uruchomienie seby
+//uruchamiamy sebe
 console.log("Budzimy Sebę...");
 seba.launch().catch((err) => {
   console.error("❌ Błąd podczas uruchamiania Seby:", err);
@@ -60,7 +36,6 @@ seba.launch().catch((err) => {
   process.exit(1);
 });
 
-// bezpieczne zamykanie
 process.once("SIGINT", () => {
   seba.stop("SIGINT");
   console.log("Seba poszedł spać!");
