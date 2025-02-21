@@ -1,17 +1,36 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+import { Telegraf } from "telegraf";
+import OpenAI from "openai";
+
+dotenv.config();
+
+// init gpt
+if (!process.env.OPENAI_API_KEY) {
+  console.error("❌ Brak klucza API OpenAI! Sprawdź plik .env");
+  process.exit(1);
+}
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const completion = await openai.chat.completions.create({
+  model: "gpt-4",
+  messages: [{ role: "user", content: "write a haiku about ai" }],
+});
+console.log(completion.choices[0].message.content);
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.error("❌ Brak tokena API! Sprawdź plik .env");
   process.exit(1);
 }
 
-const { Telegraf } = require("telegraf");
+// init bota
 const seba = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 seba.telegram.getMe().then((botInfo) => {
   console.log("✅ Seba wystartował, siema wariaty!");
-  console.log(botInfo);
-  //console.log(`Bot został zainicjalizowany jako @${botInfo.username}`);
+  //console.log(botInfo);
 });
 
 const odpowiedzi = [
@@ -43,12 +62,10 @@ seba.launch().catch((err) => {
 
 // bezpieczne zamykanie
 process.once("SIGINT", () => {
-  console.log("Seba idzie spać...");
   seba.stop("SIGINT");
   console.log("Seba poszedł spać!");
 });
 process.once("SIGTERM", () => {
-  console.log("Seba idzie spać...");
   seba.stop("SIGTERM");
   console.log("Seba poszedł spać!");
 });
