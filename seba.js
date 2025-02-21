@@ -20,5 +20,14 @@ bot.on("text", (ctx) => {
   ctx.reply(randomOdp);
 });
 
-bot.launch();
-console.log("Bot Seba wystartował, siema wariaty! 😎");
+bot
+  .launch()
+  .then(() => {
+    console.log("Bot Seba wystartował, siema wariaty! 🍺");
+  })
+  .catch((err) => {
+    console.error("Błąd podczas uruchamiania bota:", err);
+    console.error(
+      "Sprawdź, czy token API jest poprawny i czy bot jest aktywny."
+    );
+  });
